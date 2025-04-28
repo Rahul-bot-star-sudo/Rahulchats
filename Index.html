@@ -104,26 +104,8 @@
     <button onclick="sendMessage()">Send</button>
   </div>
 </div>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
-  import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDk00nQ28ihIHRoPVXZJNTpOJAKtbvzWqw",
-    authDomain: "rahulchats-27259.firebaseapp.com",
-    projectId: "rahulchats-27259",
-    storageBucket: "rahulchats-27259.appspot.com",
-    messagingSenderId: "314767164975",
-    appId: "1:314767164975:web:dce35d10988e62cd1be8da",
-    measurementId: "G-P0PQ0V0EZY",
-    databaseURL: "https://rahulchats-27259-default-rtdb.firebaseio.com"  // ADD THIS LINE
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-  const db = getDatabase(app);
-
+<script>
   const validUsers = ['rahul', 'tejas'];
   const password = '1234';
   let currentUser = '';
@@ -143,6 +125,7 @@
       chatPage.classList.add('active');
       welcome.innerText = `Welcome, ${capitalize(username)}!`;
       loadMessages();
+      markSeen();
     } else {
       alert('Invalid Credentials!');
     }
@@ -151,150 +134,62 @@
   function sendMessage() {
     const text = document.getElementById('messageInput').value.trim();
     if (text === '') return;
-    const message = {
+    const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+    const newMessage = {
+      id: Date.now(),
       user: currentUser,
       text: text,
       time: new Date().toLocaleTimeString(),
       seenBy: [currentUser],
-      replyTo: replyTo || null
+      replyTo: replyTo
     };
-    push(ref(db, "messages"), message);
+    messages.push(newMessage);
+    localStorage.setItem('chatMessages', JSON.stringify(messages));
     document.getElementById('messageInput').value = '';
     replyTo = null;
+    loadMessages();
+    markSeen();
   }
 
   function loadMessages() {
-    const messagesRef = ref(db, "messages");
-    onValue(messagesRef, (snapshot) => {
-      messagesDiv.innerHTML = '';
-      const data = snapshot.val();
-      if (data) {
-        const entries = Object.entries(data);
-        entries.forEach(([id, msg]) => {
-          const div = document.createElement('div');
-          div.className = 'message' + (msg.user === currentUser ? ' self' : '');
-          
-          if (msg.replyTo) {
-            const replyDiv = document.createElement('div');
-            replyDiv.className = 'reply';
-            replyDiv.innerText = `Replying to...`;
-            div.appendChild(replyDiv);
-          }
-
-          div.innerHTML += `<b>${capitalize(msg.user)}</b>: ${msg.text}
-          <div class="time">${msg.time}</div>`;
-
-          if (msg.user === currentUser) {
-            // No edit functionality implemented yet
-          }
-          div.innerHTML += `<button class="reply-btn" onclick="replyMessage('${id}')">Reply</button>`;
-          
-          messagesDiv.appendChild(div);
-        });
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+    messagesDiv.innerHTML = '';
+    messages.forEach(msg => {
+      const div = document.createElement('div');
+      div.className = 'message' + (msg.user === currentUser ? ' self' : '');
+      
+      if (msg.replyTo) {
+        const replyMsg = messages.find(m => m.id === msg.replyTo);
+        if (replyMsg) {
+          const replyDiv = document.createElement('div');
+          replyDiv.className = 'reply';
+          replyDiv.innerText = `Replying to ${capitalize(replyMsg.user)}: ${replyMsg.text}`;
+          div.appendChild(replyDiv);
+        }
       }
+
+      div.innerHTML += `<b>${capitalize(msg.user)}</b>: ${msg.text}
+      <div class="time">${msg.time} ${msg.seenBy.includes(getOtherUser()) ? '<span class="seen">✓ Seen</span>' : ''}</div>`;
+
+      if (msg.user === currentUser) {
+        div.innerHTML += `<button class="edit-btn" onclick="editMessage(${msg.id})">Edit</button>`;
+      }
+      div.innerHTML += `<button class="reply-btn" onclick="replyMessage(${msg.id})">Reply</button>`;
+      
+      messagesDiv.appendChild(div);
     });
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
-  function replyMessage(id) {
-    replyTo = id;
-    document.getElementById('messageInput').focus();
-  }
-
-  function capitalize(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  }
-    </script>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
-  import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyDk00nQ28ihIHRoPVXZJNTpOJAKtbvzWqw",
-    authDomain: "rahulchats-27259.firebaseapp.com",
-    projectId: "rahulchats-27259",
-    storageBucket: "rahulchats-27259.appspot.com",
-    messagingSenderId: "314767164975",
-    appId: "1:314767164975:web:dce35d10988e62cd1be8da",
-    measurementId: "G-P0PQ0V0EZY",
-    databaseURL: "https://rahulchats-27259-default-rtdb.firebaseio.com"  // ADD THIS LINE
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-  const db = getDatabase(app);
-
-  const validUsers = ['rahul', 'tejas'];
-  const password = '1234';
-  let currentUser = '';
-  let replyTo = null;
-
-  const loginPage = document.getElementById('loginPage');
-  const chatPage = document.getElementById('chatPage');
-  const welcome = document.getElementById('welcome');
-  const messagesDiv = document.getElementById('messages');
-
-  function login() {
-    const username = document.getElementById('username').value.toLowerCase();
-    const pass = document.getElementById('password').value;
-    if (validUsers.includes(username) && pass === password) {
-      currentUser = username;
-      loginPage.classList.remove('active');
-      chatPage.classList.add('active');
-      welcome.innerText = `Welcome, ${capitalize(username)}!`;
+  function editMessage(id) {
+    const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+    const msg = messages.find(m => m.id === id);
+    const newText = prompt('Edit your message:', msg.text);
+    if (newText !== null && newText.trim() !== '') {
+      msg.text = newText;
+      localStorage.setItem('chatMessages', JSON.stringify(messages));
       loadMessages();
-    } else {
-      alert('Invalid Credentials!');
     }
-  }
-
-  function sendMessage() {
-    const text = document.getElementById('messageInput').value.trim();
-    if (text === '') return;
-    const message = {
-      user: currentUser,
-      text: text,
-      time: new Date().toLocaleTimeString(),
-      seenBy: [currentUser],
-      replyTo: replyTo || null
-    };
-    push(ref(db, "messages"), message);
-    document.getElementById('messageInput').value = '';
-    replyTo = null;
-  }
-
-  function loadMessages() {
-    const messagesRef = ref(db, "messages");
-    onValue(messagesRef, (snapshot) => {
-      messagesDiv.innerHTML = '';
-      const data = snapshot.val();
-      if (data) {
-        const entries = Object.entries(data);
-        entries.forEach(([id, msg]) => {
-          const div = document.createElement('div');
-          div.className = 'message' + (msg.user === currentUser ? ' self' : '');
-          
-          if (msg.replyTo) {
-            const replyDiv = document.createElement('div');
-            replyDiv.className = 'reply';
-            replyDiv.innerText = `Replying to...`;
-            div.appendChild(replyDiv);
-          }
-
-          div.innerHTML += `<b>${capitalize(msg.user)}</b>: ${msg.text}
-          <div class="time">${msg.time}</div>`;
-
-          if (msg.user === currentUser) {
-            // No edit functionality implemented yet
-          }
-          div.innerHTML += `<button class="reply-btn" onclick="replyMessage('${id}')">Reply</button>`;
-          
-          messagesDiv.appendChild(div);
-        });
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-      }
-    });
   }
 
   function replyMessage(id) {
@@ -302,10 +197,25 @@
     document.getElementById('messageInput').focus();
   }
 
+  function markSeen() {
+    const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+    messages.forEach(m => {
+      if (!m.seenBy.includes(currentUser)) {
+        m.seenBy.push(currentUser);
+      }
+    });
+    localStorage.setItem('chatMessages', JSON.stringify(messages));
+    loadMessages();
+  }
+
   function capitalize(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  function getOtherUser() {
+    return validUsers.find(u => u !== currentUser);
   }
 </script>
-  
+
 </body>
 </html>
