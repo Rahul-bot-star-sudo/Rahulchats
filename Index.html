@@ -1,170 +1,220 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Append User Input with Delete</title>
+  <meta charset="UTF-8">
+  <title>Rahul & Tejas Chat</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
       margin: 0;
-      padding: 0;
-      background-color: #f4f4f9;
+      font-family: 'Poppins', sans-serif;
+      background: #f0f2f5;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
     }
-
     .container {
-      background-color: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-      width: 300px;
-      text-align: center;
+      width: 400px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      overflow: hidden;
     }
-
-    input[type="text"] {
-      width: 80%;
+    .login, .chat {
+      padding: 20px;
+      display: none;
+      flex-direction: column;
+    }
+    .login.active, .chat.active {
+      display: flex;
+    }
+    input, button {
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+      border: none;
+    }
+    .messages {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #eee;
       padding: 10px;
       margin-bottom: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
     }
-
-    button {
-      padding: 10px 15px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
+    .message {
       margin-bottom: 10px;
+      background: #e4e6eb;
+      padding: 8px;
+      border-radius: 8px;
+      position: relative;
     }
-
-    button:hover {
-      background-color: #45a049;
+    .message.self {
+      background: #dcf8c6;
+      align-self: flex-end;
+      text-align: right;
     }
-
-    #output {
-      margin-top: 20px;
-      white-space: pre-wrap;
-      text-align: left;
-      font-size: 14px;
-      color: #333;
-      max-height: 200px;
-      overflow-y: auto;
+    .time {
+      font-size: 10px;
+      color: gray;
+      margin-top: 5px;
     }
-
-    .entry {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin: 5px 0;
-      padding: 5px;
-      border-bottom: 1px solid #ddd;
+    .seen {
+      font-size: 10px;
+      color: blue;
     }
-
-    .delete {
+    .edit-btn, .reply-btn {
+      font-size: 10px;
+      color: #555;
+      background: none;
+      border: none;
       cursor: pointer;
-      color: red;
-      font-weight: bold;
+      margin-left: 5px;
+    }
+    .reply {
+      font-size: 12px;
+      color: #555;
+      background: #ddd;
+      padding: 4px;
+      border-radius: 4px;
+      margin-bottom: 5px;
     }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <input type="text" id="userInput" placeholder="Enter something..." />
-  <button onclick="saveInput()">Save</button>
+  <div class="login active" id="loginPage">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Username (Rahul/Tejas)">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+  </div>
 
-  <div id="output"></div>
+  <div class="chat" id="chatPage">
+    <h2 id="welcome"></h2>
+    <div class="messages" id="messages"></div>
+    <input type="text" id="messageInput" placeholder="Type your message...">
+    <button onclick="sendMessage()">Send</button>
+  </div>
 </div>
 
 <script>
-// Page load par purana data check karo
-window.onload = function() {
-  const savedInput = localStorage.getItem('userInput');
-  if (savedInput) {
-    displayInput(savedInput);
+  const validUsers = ['rahul', 'tejas'];
+  const password = '1234';
+  let currentUser = '';
+  let replyTo = null;
+
+  const loginPage = document.getElementById('loginPage');
+  const chatPage = document.getElementById('chatPage');
+  const welcome = document.getElementById('welcome');
+  const messagesDiv = document.getElementById('messages');
+
+  function login() {
+    const username = document.getElementById('username').value.toLowerCase();
+    const pass = document.getElementById('password').value;
+    if (validUsers.includes(username) && pass === password) {
+      currentUser = username;
+      loginPage.classList.remove('active');
+      chatPage.classList.add('active');
+      welcome.innerText = `Welcome, ${capitalize(username)}!`;
+      loadMessages();
+      markSeen();
+    } else {
+      alert('Invalid Credentials!');
+    }
   }
-}
 
-// Save input and append to list
-function saveInput() {
-  const input = document.getElementById('userInput').value;
-
-  // Agar input null ya empty ho, toh kuch mat karo
-  if (!input) {
-    return;
+  function sendMessage() {
+    const text = document.getElementById('messageInput').value.trim();
+    if (text === '') return;
+    const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+    const newMessage = {
+      id: Date.now(),
+      user: currentUser,
+      text: text,
+      time: new Date().toLocaleTimeString(),
+      seenBy: [currentUser],
+      replyTo: replyTo
+    };
+    messages.push(newMessage);
+    localStorage.setItem('chatMessages', JSON.stringify(messages));
+    document.getElementById('messageInput').value = '';
+    replyTo = null;
+    loadMessages();
+    markSeen();
   }
 
-  // Agar localStorage mein koi purana input hai, toh usse naya input add karo
-  let savedInput = localStorage.getItem('userInput');
-  if (savedInput) {
-    savedInput += "\n" + input; // New line mein data add karo
-  } else {
-    savedInput = input; // Agar pehli baar input aa raha hai, toh direct save karo
+  function loadMessages() {
+    const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+    messagesDiv.innerHTML = '';
+    messages.forEach(msg => {
+      const div = document.createElement('div');
+      div.className = 'message' + (msg.user === currentUser ? ' self' : '');
+      
+      if (msg.replyTo) {
+        const replyMsg = messages.find(m => m.id === msg.replyTo);
+        if (replyMsg) {
+          const replyDiv = document.createElement('div');
+          replyDiv.className = 'reply';
+          replyDiv.innerText = `Replying to ${capitalize(replyMsg.user)}: ${replyMsg.text}`;
+          div.appendChild(replyDiv);
+        }
+      }
+
+      div.innerHTML += `<b>${capitalize(msg.user)}</b>: ${msg.text}
+      <div class="time">${msg.time} ${msg.seenBy.includes(getOtherUser()) ? '<span class="seen">✓ Seen</span>' : ''}</div>`;
+
+      if (msg.user === currentUser) {
+        div.innerHTML += `<button class="edit-btn" onclick="editMessage(${msg.id})">Edit</button>`;
+      }
+      div.innerHTML += `<button class="reply-btn" onclick="replyMessage(${msg.id})">Reply</button>`;
+      
+      messagesDiv.appendChild(div);
+    });
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
-  // Updated data ko localStorage mein save karo
-  localStorage.setItem('userInput', savedInput);
+  function editMessage(id) {
+    const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+    const msg = messages.find(m => m.id === id);
+    const newText = prompt('Edit your message:', msg.text);
+    if (newText !== null && newText.trim() !== '') {
+      msg.text = newText;
+      localStorage.setItem('chatMessages', JSON.stringify(messages));
+      loadMessages();
+    }
+  }
 
-  // Display updated data
-  displayInput(savedInput);
+  function replyMessage(id) {
+    replyTo = id;
+    document.getElementById('messageInput').focus();
+  }
 
-  // Input box ko clear karo
-  document.getElementById('userInput').value = '';
-}
+  function markSeen() {
+    const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+    messages.forEach(m => {
+      if (!m.seenBy.includes(currentUser)) {
+        m.seenBy.push(currentUser);
+      }
+    });
+    localStorage.setItem('chatMessages', JSON.stringify(messages));
+    loadMessages();
+  }
 
-// Display saved inputs in output
-function displayInput(savedInput) {
-  const outputDiv = document.getElementById('output');
-  outputDiv.innerHTML = ''; // Clear current output
-  
-  // Split the saved inputs into an array by lines
-  const inputsArray = savedInput.split("\n");
+  function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
 
-  // Loop through the inputs and create a div for each one
-  inputsArray.forEach((input, index) => {
-    const entryDiv = document.createElement('div');
-    entryDiv.classList.add('entry');
-
-    // Create text for input
-    const textSpan = document.createElement('span');
-    textSpan.textContent = input;
-
-    // Create delete button
-    const deleteSpan = document.createElement('span');
-    deleteSpan.textContent = 'X';
-    deleteSpan.classList.add('delete');
-    deleteSpan.onclick = () => deleteInput(index);
-
-    // Append text and delete button to the entry div
-    entryDiv.appendChild(textSpan);
-    entryDiv.appendChild(deleteSpan);
-
-    // Append the entry div to the output
-    outputDiv.appendChild(entryDiv);
-  });
-}
-
-// Delete input
-function deleteInput(index) {
-  // Get current saved data from localStorage
-  let savedInput = localStorage.getItem('userInput');
-  const inputsArray = savedInput.split("\n");
-
-  // Remove the selected input
-  inputsArray.splice(index, 1);
-
-  // Save updated data back to localStorage
-  savedInput = inputsArray.join("\n");
-  localStorage.setItem('userInput', savedInput);
-
-  // Re-display the updated input
-  displayInput(savedInput);
-}
+  function getOtherUser() {
+    return validUsers.find(u => u !== currentUser);
+  }
 </script>
 
 </body>
