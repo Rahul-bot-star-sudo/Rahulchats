@@ -1,153 +1,171 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Rahul & Tejas Chat</title>
+  <title>Append User Input with Delete</title>
   <style>
     body {
+      font-family: Arial, sans-serif;
       margin: 0;
-      font-family: 'Poppins', sans-serif;
-      background: #f0f2f5;
+      padding: 0;
+      background-color: #f4f4f9;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
     }
+
     .container {
-      width: 400px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-      overflow: hidden;
-    }
-    .login, .chat {
+      background-color: white;
       padding: 20px;
-      display: none;
-      flex-direction: column;
-    }
-    .login.active, .chat.active {
-      display: flex;
-    }
-    input, button {
-      padding: 10px;
-      margin-top: 10px;
-      font-size: 16px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background: #4CAF50;
-      color: white;
-      cursor: pointer;
-      border: none;
-    }
-    .messages {
-      height: 300px;
-      overflow-y: auto;
-      border: 1px solid #eee;
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-    .message {
-      margin-bottom: 10px;
-      background: #e4e6eb;
-      padding: 8px;
       border-radius: 8px;
-      position: relative;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+      width: 300px;
+      text-align: center;
     }
-    .message.self {
-      background: #dcf8c6;
-      align-self: flex-end;
-      text-align: right;
-    }
-    .time {
-      font-size: 10px;
-      color: gray;
-      margin-top: 5px;
-    }
-    .seen {
-      font-size: 10px;
-      color: blue;
-    }
-    .edit-btn, .reply-btn {
-      font-size: 10px;
-      color: #555;
-      background: none;
-      border: none;
-      cursor: pointer;
-      margin-left: 5px;
-    }
-    .reply {
-      font-size: 12px;
-      color: #555;
-      background: #ddd;
-      padding: 4px;
+
+    input[type="text"] {
+      width: 80%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
       border-radius: 4px;
-      margin-bottom: 5px;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #output {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      text-align: left;
+      font-size: 14px;
+      color: #333;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .entry {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 5px 0;
+      padding: 5px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .delete {
+      cursor: pointer;
+      color: red;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <div class="login active" id="loginPage">
-    <h2>Login</h2>
-    <input type="text" id="username" placeholder="Username (Rahul/Tejas)">
-    <input type="password" id="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-  </div>
+  <input type="text" id="userInput" placeholder="Enter something..." />
+  <button onclick="saveInput()">Save</button>
 
-  <div class="chat" id="chatPage">
-    <h2 id="welcome"></h2>
-    <div class="messages" id="messages"></div>
-    <input type="text" id="messageInput" placeholder="Type your message...">
-    <button onclick="sendMessage()">Send</button>
-  </div>
+  <div id="output"></div>
 </div>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  import { getDatabase, ref, push, set, onChildAdded } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDk00nQ28ihIHRoPVXZJNTpOJAKtbvzWqw",
-    authDomain: "rahulchats-27259.firebaseapp.com",
-    databaseURL: "https://rahulchats-27259-default-rtdb.firebaseio.com",   // IMPORTANT: databaseURL add karna
-    projectId: "rahulchats-27259",
-    storageBucket: "rahulchats-27259.appspot.com",
-    messagingSenderId: "314767164975",
-    appId: "1:314767164975:web:dce35d10988e62cd1be8da",
-    measurementId: "G-P0PQ0V0EZY"
-  };
+<script>
+// Page load par purana data check karo
+window.onload = function() {
+  const savedInput = localStorage.getItem('userInput');
+  if (savedInput) {
+    displayInput(savedInput);
+  }
+}
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const database = getDatabase(app);
+// Save input and append to list
+function saveInput() {
+  const input = document.getElementById('userInput').value;
 
-  // Send Message
-  function sendMessage(user, message) {
-    const messagesRef = ref(database, 'messages');
-    const newMsg = push(messagesRef);
-    set(newMsg, {
-      user: user,
-      message: message,
-      time: new Date().toLocaleString()
-    });
+  // Agar input null ya empty ho, toh kuch mat karo
+  if (!input) {
+    return;
   }
 
-  // Listen for new messages
-  const messagesRef = ref(database, 'messages');
-  onChildAdded(messagesRef, (data) => {
-    const msg = data.val();
-    const messagesDiv = document.getElementById('messages');
-    const newMessageElement = document.createElement('p');
-    newMessageElement.innerHTML = `<strong>${msg.user}:</strong> ${msg.message} <em>${msg.time}</em>`;
-    messagesDiv.appendChild(newMessageElement);
+  // Agar localStorage mein koi purana input hai, toh usse naya input add karo
+  let savedInput = localStorage.getItem('userInput');
+  if (savedInput) {
+    savedInput += "\n" + input; // New line mein data add karo
+  } else {
+    savedInput = input; // Agar pehli baar input aa raha hai, toh direct save karo
+  }
+
+  // Updated data ko localStorage mein save karo
+  localStorage.setItem('userInput', savedInput);
+
+  // Display updated data
+  displayInput(savedInput);
+
+  // Input box ko clear karo
+  document.getElementById('userInput').value = '';
+}
+
+// Display saved inputs in output
+function displayInput(savedInput) {
+  const outputDiv = document.getElementById('output');
+  outputDiv.innerHTML = ''; // Clear current output
+  
+  // Split the saved inputs into an array by lines
+  const inputsArray = savedInput.split("\n");
+
+  // Loop through the inputs and create a div for each one
+  inputsArray.forEach((input, index) => {
+    const entryDiv = document.createElement('div');
+    entryDiv.classList.add('entry');
+
+    // Create text for input
+    const textSpan = document.createElement('span');
+    textSpan.textContent = input;
+
+    // Create delete button
+    const deleteSpan = document.createElement('span');
+    deleteSpan.textContent = 'X';
+    deleteSpan.classList.add('delete');
+    deleteSpan.onclick = () => deleteInput(index);
+
+    // Append text and delete button to the entry div
+    entryDiv.appendChild(textSpan);
+    entryDiv.appendChild(deleteSpan);
+
+    // Append the entry div to the output
+    outputDiv.appendChild(entryDiv);
   });
+}
 
-  // Button click handle
-  window.sendMessage = sendMessage;
+// Delete input
+function deleteInput(index) {
+  // Get current saved data from localStorage
+  let savedInput = localStorage.getItem('userInput');
+  const inputsArray = savedInput.split("\n");
+
+  // Remove the selected input
+  inputsArray.splice(index, 1);
+
+  // Save updated data back to localStorage
+  savedInput = inputsArray.join("\n");
+  localStorage.setItem('userInput', savedInput);
+
+  // Re-display the updated input
+  displayInput(savedInput);
+}
 </script>
-
 
 </body>
 </html>
